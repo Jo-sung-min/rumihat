@@ -10,6 +10,16 @@ npm install
 npm run dev
 ```
 
+루트에서 실행할 때는 아래 명령을 사용할 수 있습니다.
+
+```bash
+npm run dev
+```
+
+## Vercel
+
+루트 디렉터리로 import해도 `vercel.json`이 `apps/web`을 빌드하도록 설정되어 있습니다. Vercel 프로젝트 설정에서 Root Directory를 직접 지정한다면 `apps/web`으로 지정해도 됩니다.
+
 ```bash
 docker compose up -d db
 cd apps/api

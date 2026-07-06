@@ -115,7 +115,7 @@ const HOME_AREAS: HomeArea[] = [
     id: "wide",
     title: "Rumihat wide campaign",
     href: "/store",
-    imageUrl: "/rumihat2.png",
+    imageUrl: "/rumii.png",
     className: "wide-campaign",
     sizes: "100vw"
   }
