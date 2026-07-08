@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer } from "../../components/Footer";
 import { Header } from "../../components/Header";
+import { downloadOrdersCsv, fetchAdminOrders, updateAdminOrderStatus, type AdminOrder } from "../../lib/admin-orders";
 import {
   createSlug,
   deleteProduct,
@@ -16,6 +17,7 @@ import type { Product, ProductCategory, ProductStatus } from "../../lib/products
 
 const categories: ProductCategory[] = ["CAP", "HAT", "BEANIE", "TOP", "BOTTOM", "OUTER", "BAG", "ACCESSORY"];
 const statuses: ProductStatus[] = ["DRAFT", "ACTIVE", "HIDDEN", "SOLD_OUT"];
+const orderStatuses = ["PENDING", "PAID", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"];
 
 const emptyProduct: Product = {
   slug: "",
@@ -70,6 +72,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [draft, setDraft] = useState<Product>(emptyProduct);
 
   useEffect(() => {
@@ -78,8 +81,9 @@ export default function AdminPage() {
       return;
     }
 
-    fetchAdminProducts().then((items) => {
+    Promise.all([fetchAdminProducts(), fetchAdminOrders().catch(() => [])]).then(([items, orderItems]) => {
       setProducts(items);
+      setOrders(orderItems);
       setReady(true);
     });
   }, [router]);
@@ -116,6 +120,11 @@ export default function AdminPage() {
 
     persistProducts(nextProducts);
     setDraft(emptyProduct);
+  }
+
+  async function handleOrderStatusChange(orderNumber: string, status: string) {
+    await updateAdminOrderStatus(orderNumber, status);
+    setOrders((items) => items.map((order) => (order.orderNumber === orderNumber ? { ...order, status } : order)));
   }
 
   if (!ready) {
@@ -415,6 +424,50 @@ export default function AdminPage() {
                 </button>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section className="admin-section">
+          <div className="section-title-row">
+            <h2>Payment Requests</h2>
+            <button type="button" onClick={() => downloadOrdersCsv(orders)} disabled={orders.length === 0}>
+              DOWNLOAD EXCEL
+            </button>
+          </div>
+          <div className="admin-order-list">
+            {orders.length === 0 ? (
+              <p className="admin-empty">아직 결제 요청이 없습니다.</p>
+            ) : (
+              orders.map((order) => (
+                <article className="admin-order-row" key={order.orderNumber}>
+                  <div>
+                    <strong>{order.orderNumber}</strong>
+                    <p>
+                      {order.customerName || "Guest"} · {order.customerEmail}
+                    </p>
+                    <p>{order.items.map((item) => `${item.productName} / ${item.optionName} x ${item.quantity}`).join(" | ")}</p>
+                  </div>
+                  <div>
+                    <strong>{order.totalAmount.toLocaleString("ko-KR")}원</strong>
+                    <p>{new Date(order.createdAt).toLocaleString("ko-KR")}</p>
+                  </div>
+                  <div>
+                    <p>{order.receiverPhone || "-"}</p>
+                    <p>{order.shippingAddress || "-"}</p>
+                  </div>
+                  <label>
+                    Status
+                    <select value={order.status} onChange={(event) => handleOrderStatusChange(order.orderNumber, event.target.value)}>
+                      {orderStatuses.map((status) => (
+                        <option value={status} key={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </article>
+              ))
+            )}
           </div>
         </section>
       </main>

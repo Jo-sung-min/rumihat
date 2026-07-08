@@ -5,6 +5,7 @@ import { Footer } from "../../../components/Footer";
 import { Header } from "../../../components/Header";
 import { ProductVisual } from "../../../components/ProductVisual";
 import { fetchAdminProducts, getDetailProducts } from "../../../lib/admin-store";
+import { addCartItem } from "../../../lib/cart-store";
 import { formatWon, type Product } from "../../../lib/products";
 
 type ProductPageProps = {
@@ -15,6 +16,9 @@ type ProductPageProps = {
 
 export default function ProductPage({ params }: ProductPageProps) {
   const [product, setProduct] = useState<Product | null>(null);
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [cartMessage, setCartMessage] = useState("");
 
   useEffect(() => {
     fetchAdminProducts().then((items) => {
@@ -79,9 +83,9 @@ export default function ProductPage({ params }: ProductPageProps) {
             </dl>
             <label>
               OPTION
-              <select defaultValue={product.slug}>
+              <select value={selectedOptionIndex} onChange={(event) => setSelectedOptionIndex(Number(event.target.value))}>
                 {options.map((option, index) => (
-                  <option value={`${product.slug}-${index}`} key={`${option.colorName ?? product.color}-${option.sizeName ?? "FREE"}-${index}`}>
+                  <option value={index} key={`${option.colorName ?? product.color}-${option.sizeName ?? "FREE"}-${index}`}>
                     {(option.colorName ?? product.color).toUpperCase()} / {option.sizeName ?? "FREE"}
                     {option.stockQuantity === 0 ? " / 재고 확인" : ` / ${option.stockQuantity}개`}
                   </option>
@@ -89,13 +93,27 @@ export default function ProductPage({ params }: ProductPageProps) {
               </select>
             </label>
             <div className="quantity-row">
-              <button>-</button>
-              <span>1</span>
-              <button>+</button>
+              <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>
+                -
+              </button>
+              <span>{quantity}</span>
+              <button type="button" onClick={() => setQuantity((value) => value + 1)}>
+                +
+              </button>
             </div>
             <button className="buy-now">BUY NOW</button>
-            <button className="add-cart">ADD TO CART</button>
+            <button
+              className="add-cart"
+              type="button"
+              onClick={() => {
+                addCartItem(product, options[selectedOptionIndex], quantity);
+                setCartMessage("Added to cart.");
+              }}
+            >
+              ADD TO CART
+            </button>
             <button className="kakao-pay">KakaoPay</button>
+            {cartMessage ? <p className="cart-message">{cartMessage}</p> : null}
           </aside>
         </section>
         <section className="detail-copy product-detail-content">

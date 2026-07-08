@@ -1,6 +1,7 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { Globe2, Instagram } from "lucide-react";
 import { AuthStatus } from "./AuthStatus";
+import { CartStatus } from "./CartStatus";
 
 export function Header() {
   return (
@@ -25,9 +26,9 @@ export function Header() {
           <Link href="/" aria-label="Language">
             <Globe2 size={22} />
           </Link>
-          <Link href="/">Cart(0)</Link>
-          <Link href="/">My page</Link>
-          <Link href="/">Join</Link>
+          <CartStatus />
+          <Link href="/mypage">My page</Link>
+          <Link href="/login">Join</Link>
           <AuthStatus />
         </nav>
       </div>

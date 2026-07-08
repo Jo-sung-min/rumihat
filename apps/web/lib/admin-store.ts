@@ -195,6 +195,24 @@ export function saveAdminSession(token: string, provider = "password", email = "
   }
 }
 
+export function getSessionProfile() {
+  if (!canUseStorage()) {
+    return null;
+  }
+
+  const rawProfile = window.localStorage.getItem(AUTH_PROFILE_STORAGE_KEY);
+
+  if (!rawProfile) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawProfile) as { provider?: string; email?: string };
+  } catch {
+    return null;
+  }
+}
+
 export function logoutAdmin() {
   if (canUseStorage()) {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);

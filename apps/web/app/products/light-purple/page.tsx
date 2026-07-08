@@ -1,7 +1,11 @@
-﻿import Image from "next/image";
+"use client";
+
+import Image from "next/image";
+import { useState } from "react";
 import { Footer } from "../../../components/Footer";
 import { Header } from "../../../components/Header";
 import { ProductVisual } from "../../../components/ProductVisual";
+import { addCartItem } from "../../../lib/cart-store";
 import { featuredProduct, formatWon } from "../../../lib/products";
 
 const people = [
@@ -17,6 +21,9 @@ const people = [
 ];
 
 export default function ProductDetailPage() {
+  const [quantity, setQuantity] = useState(1);
+  const [cartMessage, setCartMessage] = useState("");
+
   return (
     <>
       <Header />
@@ -50,13 +57,27 @@ export default function ProductDetailPage() {
               </select>
             </label>
             <div className="quantity-row">
-              <button>-</button>
-              <span>1</span>
-              <button>+</button>
+              <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))}>
+                -
+              </button>
+              <span>{quantity}</span>
+              <button type="button" onClick={() => setQuantity((value) => value + 1)}>
+                +
+              </button>
             </div>
             <button className="buy-now">BUY NOW</button>
-            <button className="add-cart">ADD TO CART</button>
+            <button
+              className="add-cart"
+              type="button"
+              onClick={() => {
+                addCartItem(featuredProduct, { colorName: featuredProduct.color, sizeName: "FREE", stockQuantity: 0, extraPrice: 0 }, quantity);
+                setCartMessage("Added to cart.");
+              }}
+            >
+              ADD TO CART
+            </button>
             <button className="kakao-pay">KakaoPay</button>
+            {cartMessage ? <p className="cart-message">{cartMessage}</p> : null}
           </aside>
         </section>
         <section className="people-grid">

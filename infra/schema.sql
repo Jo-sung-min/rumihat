@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS orders (
   order_number VARCHAR(80) NOT NULL UNIQUE,
   customer_name VARCHAR(120) NOT NULL,
   customer_email VARCHAR(180) NOT NULL,
+  receiver_phone VARCHAR(60),
+  shipping_address TEXT,
   total_price INTEGER NOT NULL,
   status VARCHAR(40) NOT NULL DEFAULT 'PENDING',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
