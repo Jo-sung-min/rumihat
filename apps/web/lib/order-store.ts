@@ -35,34 +35,37 @@ export async function createLocalOrder(input: { buyerName: string; buyerEmail: s
   let orderNumber = `RUM-${Date.now()}`;
   let serverTotalAmount = totalAmount;
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/orders`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        buyerName: input.buyerName,
-        buyerEmail: input.buyerEmail,
-        receiverPhone: input.receiverPhone,
-        shippingAddress: input.shippingAddress,
-        items: items.map((item) => ({
-          productSlug: item.slug,
-          productName: item.name,
-          optionLabel: item.optionLabel,
-          unitPrice: item.unitPrice,
-          quantity: item.quantity
-        }))
-      })
-    });
-
-    if (response.ok) {
-      const result = (await response.json()) as { orderNumber?: string; totalAmount?: number };
-      orderNumber = result.orderNumber ?? orderNumber;
-      serverTotalAmount = result.totalAmount ?? serverTotalAmount;
-    }
-  } catch {
+  if (items.length === 0) {
+    throw new Error("No items to order");
   }
+
+  const response = await fetch(`${API_BASE_URL}/api/orders`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      buyerName: input.buyerName,
+      buyerEmail: input.buyerEmail,
+      receiverPhone: input.receiverPhone,
+      shippingAddress: input.shippingAddress,
+      items: items.map((item) => ({
+        productSlug: item.slug,
+        productName: item.name,
+        optionLabel: item.optionLabel,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity
+      }))
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create order");
+  }
+
+  const result = (await response.json()) as { orderNumber?: string; totalAmount?: number };
+  orderNumber = result.orderNumber ?? orderNumber;
+  serverTotalAmount = result.totalAmount ?? serverTotalAmount;
 
   const order: OrderRecord = {
     orderNumber,

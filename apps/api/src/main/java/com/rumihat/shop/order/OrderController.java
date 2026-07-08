@@ -39,11 +39,15 @@ public class OrderController {
         try {
             orderItems = items.stream()
                 .map(item -> {
-                    Product product = productRepository.findBySlug(item.productSlug())
-                        .orElseThrow(() -> new IllegalArgumentException("Unknown product slug: " + item.productSlug()));
+                    if (item.productName() == null || item.productName().isBlank()) {
+                        throw new IllegalArgumentException("Product name is required");
+                    }
+
+                    Product product = resolveProduct(item);
+
                     return new OrderItem(
                         product,
-                        item.productName() == null || item.productName().isBlank() ? product.getName() : item.productName(),
+                        item.productName(),
                         item.optionLabel() == null || item.optionLabel().isBlank() ? "Default / FREE" : item.optionLabel(),
                         item.unitPrice(),
                         Math.max(1, item.quantity())
@@ -74,6 +78,7 @@ public class OrderController {
     }
 
     @GetMapping("/me")
+    @Transactional(readOnly = true)
     public List<OrderSummaryResponse> findMyOrders(@RequestHeader("X-Customer-Email") String customerEmail) {
         return orderRepository.findByCustomerEmailOrderByCreatedAtDesc(customerEmail).stream()
             .map(this::toSummary)
@@ -81,6 +86,7 @@ public class OrderController {
     }
 
     @GetMapping("/admin")
+    @Transactional(readOnly = true)
     public List<AdminOrderResponse> findAdminOrders() {
         return orderRepository.findAllByOrderByCreatedAtDesc().stream()
             .map(order -> new AdminOrderResponse(
@@ -111,6 +117,37 @@ public class OrderController {
                 return ResponseEntity.ok(toSummary(order));
             })
             .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    private Product resolveProduct(OrderItemRequest item) {
+        if (item.productSlug() == null || item.productSlug().isBlank()) {
+            throw new IllegalArgumentException("Product slug is required");
+        }
+
+        return productRepository.findBySlug(item.productSlug())
+            .orElseGet(() -> productRepository.save(new Product(
+                item.productSlug(),
+                item.productName(),
+                "CAP",
+                null,
+                Math.max(1, item.unitPrice()),
+                null,
+                null,
+                null,
+                "#111111",
+                null,
+                null,
+                null,
+                null,
+                List.of(),
+                true,
+                null,
+                0,
+                null,
+                null,
+                List.of(),
+                List.of()
+            )));
     }
 
     private OrderSummaryResponse toSummary(Order order) {

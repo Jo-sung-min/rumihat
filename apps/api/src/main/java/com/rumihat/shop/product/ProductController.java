@@ -23,23 +23,27 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<Product> findAll() {
-        return productRepository.findAllByOrderByDisplayOrderAscIdDesc();
+    @Transactional(readOnly = true)
+    public List<ProductResponse> findAll() {
+        return productRepository.findAllByOrderByDisplayOrderAscIdDesc().stream()
+            .map(this::toResponse)
+            .toList();
     }
 
     @PostMapping
-    public Product create(@RequestBody ProductCreateRequest request) {
+    @Transactional
+    public ProductResponse create(@RequestBody ProductCreateRequest request) {
         Product product = toProduct(request);
 
-        return productRepository.save(product);
+        return toResponse(productRepository.save(product));
     }
 
     @PutMapping("/{slug}")
     @Transactional
-    public Product upsert(@PathVariable String slug, @RequestBody ProductCreateRequest request) {
-        return productRepository.findBySlug(slug)
-            .map(product -> {
-                product.update(
+    public ProductResponse upsert(@PathVariable String slug, @RequestBody ProductCreateRequest request) {
+        Product product = productRepository.findBySlug(slug)
+            .map(existingProduct -> {
+                existingProduct.update(
                     slug,
                     request.name(),
                     request.category(),
@@ -62,15 +66,18 @@ public class ProductController {
                     toImages(request),
                     toOptions(request)
                 );
-                return product;
+                return existingProduct;
             })
             .orElseGet(() -> productRepository.save(toProduct(request.withSlug(slug))));
+
+        return toResponse(product);
     }
 
     @GetMapping("/{slug}")
-    public ResponseEntity<Product> findBySlug(@PathVariable String slug) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<ProductResponse> findBySlug(@PathVariable String slug) {
         return productRepository.findBySlug(slug)
-            .map(ResponseEntity::ok)
+            .map(product -> ResponseEntity.ok(toResponse(product)))
             .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -151,5 +158,66 @@ public class ProductController {
                 option.extraPrice() == null ? 0 : option.extraPrice()
             ))
             .toList();
+    }
+
+    private ProductResponse toResponse(Product product) {
+        return new ProductResponse(
+            product.getSlug(),
+            product.getName(),
+            product.getCategory(),
+            product.getSummary(),
+            product.getPrice(),
+            product.getSalePrice(),
+            product.getBadge(),
+            product.getColorName(),
+            product.getTone(),
+            product.getAccent(),
+            product.getImageUrl(),
+            product.getDetailTitle(),
+            product.getDetailDescription(),
+            product.getDetailImages(),
+            product.isVisible(),
+            product.getStatus(),
+            product.getDisplayOrder(),
+            product.getMaterial(),
+            product.getCare(),
+            product.getImages().stream()
+                .map(image -> new ProductImageResponse(image.getUrl(), image.getAlt(), image.getImageType(), image.getSortOrder()))
+                .toList(),
+            product.getOptions().stream()
+                .map(option -> new ProductOptionResponse(option.getColorName(), option.getSizeName(), option.getStockQuantity(), option.getExtraPrice()))
+                .toList()
+        );
+    }
+
+    public record ProductImageResponse(String url, String alt, String imageType, int sortOrder) {
+    }
+
+    public record ProductOptionResponse(String colorName, String sizeName, int stockQuantity, int extraPrice) {
+    }
+
+    public record ProductResponse(
+        String slug,
+        String name,
+        String category,
+        String summary,
+        int price,
+        Integer salePrice,
+        String badge,
+        String colorName,
+        String tone,
+        String accent,
+        String imageUrl,
+        String detailTitle,
+        String detailDescription,
+        List<String> detailImages,
+        boolean visible,
+        ProductStatus status,
+        int displayOrder,
+        String material,
+        String care,
+        List<ProductImageResponse> images,
+        List<ProductOptionResponse> options
+    ) {
     }
 }

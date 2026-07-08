@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE TABLE IF NOT EXISTS order_items (
   id BIGSERIAL PRIMARY KEY,
   order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  product_id BIGINT NOT NULL REFERENCES products(id),
+  product_id BIGINT REFERENCES products(id),
   product_name VARCHAR(220) NOT NULL,
   option_name VARCHAR(120) NOT NULL,
   unit_price INTEGER NOT NULL,

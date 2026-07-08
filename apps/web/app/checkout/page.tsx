@@ -17,6 +17,8 @@ export default function CheckoutPage() {
   const [buyerEmail, setBuyerEmail] = useState("");
   const [receiverPhone, setReceiverPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setItems(getCartItems());
@@ -28,8 +30,17 @@ export default function CheckoutPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await createLocalOrder({ buyerName, buyerEmail, receiverPhone, shippingAddress: address });
-    router.push("/mypage");
+    setErrorMessage("");
+    setIsSubmitting(true);
+
+    try {
+      await createLocalOrder({ buyerName, buyerEmail, receiverPhone, shippingAddress: address });
+      router.push("/mypage");
+    } catch {
+      setErrorMessage("주문 저장에 실패했습니다. API 서버와 DB 연결을 확인해주세요.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -64,6 +75,7 @@ export default function CheckoutPage() {
                 Shipping address
                 <textarea required value={address} onChange={(event) => setAddress(event.target.value)} />
               </label>
+              {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
             </section>
             <aside className="cart-summary">
               <h2>Order</h2>
@@ -81,7 +93,9 @@ export default function CheckoutPage() {
                   <dd>{formatWon(subtotal + shippingFee)}</dd>
                 </div>
               </dl>
-              <button type="submit">CREATE ORDER</button>
+              <button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "CREATING..." : "CREATE ORDER"}
+              </button>
             </aside>
           </form>
         )}
