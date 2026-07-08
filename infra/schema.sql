@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS products (
   id BIGSERIAL PRIMARY KEY,
   slug VARCHAR(160) NOT NULL UNIQUE,
   name VARCHAR(220) NOT NULL,
+  category VARCHAR(80) NOT NULL DEFAULT 'CAP',
   summary TEXT,
   price INTEGER NOT NULL,
   sale_price INTEGER,
@@ -10,7 +11,12 @@ CREATE TABLE IF NOT EXISTS products (
   tone VARCHAR(40),
   accent VARCHAR(40),
   image_url TEXT,
+  detail_title VARCHAR(220),
+  detail_description TEXT,
+  detail_images TEXT[],
   visible BOOLEAN NOT NULL DEFAULT TRUE,
+  status VARCHAR(40) NOT NULL DEFAULT 'ACTIVE',
+  display_order INTEGER NOT NULL DEFAULT 0,
   material VARCHAR(120),
   care TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -29,13 +35,18 @@ CREATE TABLE IF NOT EXISTS product_images (
   product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
   alt VARCHAR(220) NOT NULL,
+  image_type VARCHAR(40) NOT NULL DEFAULT 'detail',
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS product_options (
   id BIGSERIAL PRIMARY KEY,
   product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-  option_name VARCHAR(120) NOT NULL,
+  color_name VARCHAR(80),
+  size_name VARCHAR(80) NOT NULL DEFAULT 'FREE',
+  stock_quantity INTEGER NOT NULL DEFAULT 0,
+  extra_price INTEGER NOT NULL DEFAULT 0,
+  option_name VARCHAR(120) NOT NULL DEFAULT 'Default / FREE',
   stock INTEGER NOT NULL DEFAULT 0,
   additional_price INTEGER NOT NULL DEFAULT 0
 );

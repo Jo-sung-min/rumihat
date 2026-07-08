@@ -1,4 +1,4 @@
-﻿package com.rumihat.shop;
+package com.rumihat.shop;
 
 import java.util.List;
 import java.util.Arrays;
@@ -22,7 +22,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
             .allowedOrigins(allowedOrigins.toArray(String[]::new))
-            .allowedMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
+            .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             .allowedHeaders("*");
     }
 }

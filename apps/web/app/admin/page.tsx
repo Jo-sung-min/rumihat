@@ -6,20 +6,29 @@ import { Footer } from "../../components/Footer";
 import { Header } from "../../components/Header";
 import {
   createSlug,
-  getAdminProducts,
+  deleteProduct,
+  fetchAdminProducts,
   isAdminLoggedIn,
+  saveProduct,
   saveManagedProducts
 } from "../../lib/admin-store";
-import type { Product } from "../../lib/products";
+import type { Product, ProductCategory, ProductStatus } from "../../lib/products";
+
+const categories: ProductCategory[] = ["CAP", "HAT", "BEANIE", "TOP", "BOTTOM", "OUTER", "BAG", "ACCESSORY"];
+const statuses: ProductStatus[] = ["DRAFT", "ACTIVE", "HIDDEN", "SOLD_OUT"];
 
 const emptyProduct: Product = {
   slug: "",
   name: "",
+  category: "CAP",
   price: 74000,
   color: "black",
   tone: "#111111",
   accent: "#fbf4df",
-  visible: true
+  visible: true,
+  status: "ACTIVE",
+  displayOrder: 0,
+  options: [{ colorName: "black", sizeName: "FREE", stockQuantity: 0, extraPrice: 0 }]
 };
 
 function readImage(event: ChangeEvent<HTMLInputElement>, onLoad: (value: string) => void) {
@@ -38,6 +47,25 @@ function readImage(event: ChangeEvent<HTMLInputElement>, onLoad: (value: string)
   reader.readAsDataURL(file);
 }
 
+function readImages(event: ChangeEvent<HTMLInputElement>, onLoad: (values: string[]) => void) {
+  const files = Array.from(event.target.files ?? []);
+
+  if (files.length === 0) {
+    return;
+  }
+
+  Promise.all(
+    files.map(
+      (file) =>
+        new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+          reader.readAsDataURL(file);
+        })
+    )
+  ).then((values) => onLoad(values.filter(Boolean)));
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -50,8 +78,10 @@ export default function AdminPage() {
       return;
     }
 
-    setProducts(getAdminProducts());
-    setReady(true);
+    fetchAdminProducts().then((items) => {
+      setProducts(items);
+      setReady(true);
+    });
   }, [router]);
 
   function persistProducts(nextProducts: Product[]) {
@@ -59,15 +89,30 @@ export default function AdminPage() {
     saveManagedProducts(nextProducts);
   }
 
-  function handleProductSubmit(event: FormEvent<HTMLFormElement>) {
+  function editProduct(product: Product) {
+    setDraft({
+      ...emptyProduct,
+      ...product,
+      category: product.category ?? "CAP",
+      status: product.status ?? (product.visible === false ? "HIDDEN" : "ACTIVE"),
+      displayOrder: product.displayOrder ?? 0,
+      options:
+        product.options && product.options.length > 0
+          ? product.options
+          : [{ colorName: product.color, sizeName: "FREE", stockQuantity: 0, extraPrice: 0 }]
+    });
+  }
+
+  async function handleProductSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const slug = draft.slug || createSlug(draft.name);
     const nextProduct = { ...draft, slug, visible: draft.visible !== false };
-    const exists = products.some((product) => product.slug === slug);
+    const savedProduct = await saveProduct(nextProduct);
+    const exists = products.some((product) => product.slug === savedProduct.slug);
     const nextProducts = exists
-      ? products.map((product) => (product.slug === slug ? nextProduct : product))
-      : [nextProduct, ...products];
+      ? products.map((product) => (product.slug === savedProduct.slug ? savedProduct : product))
+      : [savedProduct, ...products];
 
     persistProducts(nextProducts);
     setDraft(emptyProduct);
@@ -96,6 +141,35 @@ export default function AdminPage() {
             <label>
               Slug
               <input value={draft.slug} placeholder="자동 생성 가능" onChange={(event) => setDraft({ ...draft, slug: createSlug(event.target.value) })} />
+            </label>
+            <label>
+              Category
+              <select value={draft.category ?? "CAP"} onChange={(event) => setDraft({ ...draft, category: event.target.value as ProductCategory })}>
+                {categories.map((category) => (
+                  <option value={category} key={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Status
+              <select
+                value={draft.status ?? "ACTIVE"}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    status: event.target.value as ProductStatus,
+                    visible: event.target.value === "ACTIVE"
+                  })
+                }
+              >
+                {statuses.map((status) => (
+                  <option value={status} key={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               Price
@@ -131,8 +205,170 @@ export default function AdminPage() {
               Product image
               <input type="file" accept="image/*" onChange={(event) => readImage(event, (imageUrl) => setDraft({ ...draft, imageUrl }))} />
             </label>
+            <label>
+              Display order
+              <input
+                type="number"
+                value={draft.displayOrder ?? 0}
+                onChange={(event) => setDraft({ ...draft, displayOrder: Number(event.target.value) })}
+              />
+            </label>
+            <label>
+              Material
+              <input value={draft.material ?? ""} onChange={(event) => setDraft({ ...draft, material: event.target.value })} />
+            </label>
+            <label className="form-wide">
+              Care
+              <input value={draft.care ?? ""} onChange={(event) => setDraft({ ...draft, care: event.target.value })} />
+            </label>
+            <label className="form-wide">
+              Detail title
+              <input
+                value={draft.detailTitle ?? ""}
+                placeholder="상세페이지 제목"
+                onChange={(event) => setDraft({ ...draft, detailTitle: event.target.value })}
+              />
+            </label>
+            <label className="form-wide">
+              Detail description
+              <textarea
+                value={draft.detailDescription ?? ""}
+                placeholder="상세페이지 설명을 입력하세요."
+                onChange={(event) => setDraft({ ...draft, detailDescription: event.target.value })}
+              />
+            </label>
+            <label className="form-wide">
+              Detail images
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(event) =>
+                  readImages(event, (detailImages) =>
+                    setDraft({
+                      ...draft,
+                      detailImages: [...(draft.detailImages ?? []), ...detailImages]
+                    })
+                  )
+                }
+              />
+            </label>
+            {draft.detailImages?.length ? (
+              <div className="detail-image-admin-list form-wide">
+                {draft.detailImages.map((imageUrl, index) => (
+                  <figure key={`${imageUrl.slice(0, 32)}-${index}`}>
+                    <img src={imageUrl} alt={`상세 이미지 ${index + 1}`} />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          detailImages: draft.detailImages?.filter((_, imageIndex) => imageIndex !== index)
+                        })
+                      }
+                    >
+                      REMOVE
+                    </button>
+                  </figure>
+                ))}
+              </div>
+            ) : null}
+            <div className="option-admin-list form-wide">
+              <div className="section-title-row compact">
+                <strong>Options</strong>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      options: [...(draft.options ?? []), { colorName: draft.color, sizeName: "FREE", stockQuantity: 0, extraPrice: 0 }]
+                    })
+                  }
+                >
+                  ADD OPTION
+                </button>
+              </div>
+              {(draft.options ?? [{ colorName: draft.color, sizeName: "FREE", stockQuantity: 0, extraPrice: 0 }]).map((option, index) => (
+                <div className="option-admin-row" key={`${option.colorName ?? "option"}-${option.sizeName ?? "size"}-${index}`}>
+                  <label>
+                    Option color
+                    <input
+                      value={option.colorName ?? ""}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          options: (draft.options ?? []).map((item, optionIndex) =>
+                            optionIndex === index ? { ...item, colorName: event.target.value } : item
+                          )
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Size
+                    <input
+                      value={option.sizeName ?? ""}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          options: (draft.options ?? []).map((item, optionIndex) =>
+                            optionIndex === index ? { ...item, sizeName: event.target.value } : item
+                          )
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Stock
+                    <input
+                      type="number"
+                      value={option.stockQuantity ?? 0}
+                      min={0}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          options: (draft.options ?? []).map((item, optionIndex) =>
+                            optionIndex === index ? { ...item, stockQuantity: Number(event.target.value) } : item
+                          )
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Extra price
+                    <input
+                      type="number"
+                      value={option.extraPrice ?? 0}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          options: (draft.options ?? []).map((item, optionIndex) =>
+                            optionIndex === index ? { ...item, extraPrice: Number(event.target.value) } : item
+                          )
+                        })
+                      }
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        options: (draft.options ?? []).filter((_, optionIndex) => optionIndex !== index)
+                      })
+                    }
+                  >
+                    REMOVE
+                  </button>
+                </div>
+              ))}
+            </div>
             <label className="check-label">
-              <input type="checkbox" checked={draft.visible !== false} onChange={(event) => setDraft({ ...draft, visible: event.target.checked })} />
+              <input
+                type="checkbox"
+                checked={draft.visible !== false}
+                onChange={(event) => setDraft({ ...draft, visible: event.target.checked, status: event.target.checked ? "ACTIVE" : "HIDDEN" })}
+              />
               스토어 노출
             </label>
             <button type="submit">SAVE PRODUCT</button>
@@ -147,20 +383,34 @@ export default function AdminPage() {
                 <div className="mini-thumb">{product.imageUrl ? <img src={product.imageUrl} alt={product.name} /> : <span style={{ background: product.tone }} />}</div>
                 <div>
                   <strong>{product.name}</strong>
-                  <p>{product.slug}</p>
+                  <p>
+                    {product.slug} · {product.category ?? "CAP"} · {product.status ?? (product.visible === false ? "HIDDEN" : "ACTIVE")}
+                  </p>
                 </div>
-                <button type="button" onClick={() => setDraft(product)}>
+                <button type="button" onClick={() => editProduct(product)}>
                   EDIT
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    persistProducts(products.map((item) => (item.slug === product.slug ? { ...item, visible: item.visible === false } : item)))
-                  }
+                  onClick={async () => {
+                    const nextProduct = {
+                      ...product,
+                      visible: product.visible === false,
+                      status: product.visible === false ? ("ACTIVE" as const) : ("HIDDEN" as const)
+                    };
+                    const savedProduct = await saveProduct(nextProduct);
+                    persistProducts(products.map((item) => (item.slug === product.slug ? savedProduct : item)));
+                  }}
                 >
                   {product.visible === false ? "SHOW" : "HIDE"}
                 </button>
-                <button type="button" onClick={() => persistProducts(products.filter((item) => item.slug !== product.slug))}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await deleteProduct(product.slug);
+                    persistProducts(products.filter((item) => item.slug !== product.slug));
+                  }}
+                >
                   DELETE
                 </button>
               </article>

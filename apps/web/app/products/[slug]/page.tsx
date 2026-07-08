@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Footer } from "../../../components/Footer";
 import { Header } from "../../../components/Header";
 import { ProductVisual } from "../../../components/ProductVisual";
-import { getDetailProducts } from "../../../lib/admin-store";
+import { fetchAdminProducts, getDetailProducts } from "../../../lib/admin-store";
 import { formatWon, type Product } from "../../../lib/products";
 
 type ProductPageProps = {
@@ -17,7 +17,10 @@ export default function ProductPage({ params }: ProductPageProps) {
   const [product, setProduct] = useState<Product | null>(null);
 
   useEffect(() => {
-    setProduct(getDetailProducts().find((item) => item.slug === params.slug) ?? null);
+    fetchAdminProducts().then((items) => {
+      const fallbackItems = items.length > 0 ? items : getDetailProducts();
+      setProduct(fallbackItems.find((item) => item.slug === params.slug) ?? null);
+    });
   }, [params.slug]);
 
   if (!product) {
@@ -34,6 +37,10 @@ export default function ProductPage({ params }: ProductPageProps) {
       </>
     );
   }
+
+  const detailImages = product.detailImages ?? [];
+  const hasManagedDetail = product.detailTitle || product.detailDescription || detailImages.length > 0;
+  const options = product.options && product.options.length > 0 ? product.options : [{ colorName: product.color, sizeName: "FREE", stockQuantity: 0, extraPrice: 0 }];
 
   return (
     <>
@@ -63,17 +70,22 @@ export default function ProductPage({ params }: ProductPageProps) {
               </div>
               <div>
                 <dt>SIZE</dt>
-                <dd>FREE</dd>
+                <dd>{Array.from(new Set(options.map((option) => option.sizeName ?? "FREE"))).join(", ")}</dd>
               </div>
               <div>
                 <dt>MATERIAL</dt>
-                <dd>COTTON 100%</dd>
+                <dd>{product.material || "COTTON 100%"}</dd>
               </div>
             </dl>
             <label>
               OPTION
               <select defaultValue={product.slug}>
-                <option value={product.slug}>{product.color.toUpperCase()} / FREE</option>
+                {options.map((option, index) => (
+                  <option value={`${product.slug}-${index}`} key={`${option.colorName ?? product.color}-${option.sizeName ?? "FREE"}-${index}`}>
+                    {(option.colorName ?? product.color).toUpperCase()} / {option.sizeName ?? "FREE"}
+                    {option.stockQuantity === 0 ? " / 재고 확인" : ` / ${option.stockQuantity}개`}
+                  </option>
+                ))}
               </select>
             </label>
             <div className="quantity-row">
@@ -86,10 +98,17 @@ export default function ProductPage({ params }: ProductPageProps) {
             <button className="kakao-pay">KakaoPay</button>
           </aside>
         </section>
-        <section className="detail-copy">
-          <h2>COM BALL CAP COLLECTION</h2>
-          <p>{product.name}은 데일리 착용에 맞춘 코튼 볼캡 라인입니다.</p>
+        <section className="detail-copy product-detail-content">
+          <h2>{product.detailTitle || "COM BALL CAP COLLECTION"}</h2>
+          <p>{product.detailDescription || `${product.name}은 데일리 착용에 맞춘 코튼 볼캡 라인입니다.`}</p>
         </section>
+        {hasManagedDetail && detailImages.length > 0 ? (
+          <section className="registered-detail-images" aria-label="등록된 상품 상세 이미지">
+            {detailImages.map((imageUrl, index) => (
+              <img src={imageUrl} alt={`${product.name} 상세 이미지 ${index + 1}`} key={`${imageUrl.slice(0, 32)}-${index}`} />
+            ))}
+          </section>
+        ) : null}
       </main>
       <Footer />
     </>

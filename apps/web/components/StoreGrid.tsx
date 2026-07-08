@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getStoreProducts } from "../lib/admin-store";
+import { fetchStoreProducts } from "../lib/admin-store";
 import type { Product } from "../lib/products";
 import { ProductCard } from "./ProductCard";
 
@@ -12,7 +12,7 @@ export function StoreGrid() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    setItems(getStoreProducts());
+    fetchStoreProducts().then(setItems);
   }, []);
 
   const pageCount = Math.max(1, Math.ceil(items.length / PAGE_SIZE));

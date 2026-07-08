@@ -1,7 +1,7 @@
-﻿plugins {
+plugins {
     id 'java'
     id 'org.springframework.boot' version '3.3.1'
-    id 'io.spring.dependency-management' version '1.1.5'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.rumihat'
@@ -15,13 +15,47 @@ java {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     runtimeOnly 'org.postgresql:postgresql'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
+def loadDotEnv = { File envFile ->
+    if (!envFile.exists()) {
+        return [:]
+    }
+
+    envFile.readLines('UTF-8')
+        .collect { it.trim() }
+        .findAll { it && !it.startsWith('#') && it.contains('=') }
+        .collectEntries { line ->
+            def index = line.indexOf('=')
+            def key = line.substring(0, index).trim()
+            def value = line.substring(index + 1).trim()
+
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                value = value.substring(1, value.length() - 1)
+            }
+
+            [(key): value]
+        }
+}
+
+tasks.named('bootRun') {
+    def envValues = [:]
+    envValues.putAll(loadDotEnv(rootProject.file('../../.env')))
+    envValues.putAll(loadDotEnv(rootProject.file('.env')))
+
+    envValues.each { key, value ->
+        if (!System.getenv().containsKey(key)) {
+            environment key, value
+        }
+    }
+}
+
 tasks.named('test') {
     useJUnitPlatform()
 }
-
