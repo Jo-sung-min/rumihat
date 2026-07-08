@@ -65,12 +65,14 @@ public class OrderController {
             request.receiverPhone(),
             request.shippingAddress(),
             subtotal + shippingFee,
+            request.paymentMethod(),
             orderItems
         ));
 
         return ResponseEntity.ok(new OrderResponse(
             savedOrder.getOrderNumber(),
             savedOrder.getStatus(),
+            savedOrder.getPaymentStatus(),
             subtotal,
             shippingFee,
             subtotal + shippingFee
@@ -96,6 +98,8 @@ public class OrderController {
                 order.getCustomerEmail(),
                 order.getReceiverPhone(),
                 order.getShippingAddress(),
+                order.getPaymentMethod(),
+                order.getPaymentStatus(),
                 order.getTotalPrice(),
                 order.getCreatedAt().toString(),
                 order.getItems().stream()
@@ -155,7 +159,17 @@ public class OrderController {
             order.getOrderNumber(),
             order.getStatus(),
             order.getTotalPrice(),
-            order.getCreatedAt().toString()
+            order.getCreatedAt().toString(),
+            order.getItems().stream()
+                .map(item -> new OrderItemResponse(
+                    item.getProductSlug(),
+                    item.getProductName(),
+                    item.getProductImageUrl(),
+                    item.getOptionName(),
+                    item.getUnitPrice(),
+                    item.getQuantity()
+                ))
+                .toList()
         );
     }
 
@@ -164,6 +178,7 @@ public class OrderController {
         String buyerEmail,
         String receiverPhone,
         String shippingAddress,
+        String paymentMethod,
         List<OrderItemRequest> items
     ) {
     }
@@ -171,10 +186,13 @@ public class OrderController {
     public record OrderItemRequest(String productSlug, String productName, String optionLabel, int unitPrice, int quantity) {
     }
 
-    public record OrderResponse(String orderNumber, String status, int subtotalAmount, int shippingFee, int totalAmount) {
+    public record OrderResponse(String orderNumber, String status, String paymentStatus, int subtotalAmount, int shippingFee, int totalAmount) {
     }
 
-    public record OrderSummaryResponse(String orderNumber, String status, int totalAmount, String createdAt) {
+    public record OrderSummaryResponse(String orderNumber, String status, int totalAmount, String createdAt, List<OrderItemResponse> items) {
+    }
+
+    public record OrderItemResponse(String productSlug, String productName, String imageUrl, String optionName, int unitPrice, int quantity) {
     }
 
     public record OrderStatusUpdateRequest(String status) {
@@ -190,6 +208,8 @@ public class OrderController {
         String customerEmail,
         String receiverPhone,
         String shippingAddress,
+        String paymentMethod,
+        String paymentStatus,
         int totalAmount,
         String createdAt,
         List<AdminOrderItemResponse> items

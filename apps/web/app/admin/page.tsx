@@ -454,6 +454,9 @@ export default function AdminPage() {
                   <div>
                     <p>{order.receiverPhone || "-"}</p>
                     <p>{order.shippingAddress || "-"}</p>
+                    <p>
+                      {order.paymentMethod ?? "MANUAL"} / {order.paymentStatus ?? "PENDING_PAYMENT"}
+                    </p>
                   </div>
                   <label>
                     Status

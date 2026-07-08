@@ -2,27 +2,35 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { isAdminLoggedIn, logoutAdmin } from "../lib/admin-store";
+import { getSessionProfile, logoutAdmin, subscribeAuth, type SessionProfile } from "../lib/admin-store";
 
 export function AuthStatus() {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [profile, setProfile] = useState<SessionProfile | null>(null);
 
   useEffect(() => {
-    setLoggedIn(isAdminLoggedIn());
+    const refresh = () => setProfile(getSessionProfile());
+    refresh();
+
+    return subscribeAuth(refresh);
   }, []);
 
-  if (!loggedIn) {
-    return <Link href="/login">Login</Link>;
+  if (!profile) {
+    return (
+      <>
+        <Link href="/login?mode=join">Join</Link>
+        <Link href="/login">Login</Link>
+      </>
+    );
   }
 
   return (
     <>
-      <Link href="/admin">Admin</Link>
+      {profile.role === "ADMIN" ? <Link href="/admin">Admin</Link> : null}
       <button
         className="header-text-button"
         onClick={() => {
           logoutAdmin();
-          setLoggedIn(false);
+          setProfile(null);
         }}
       >
         Logout
@@ -30,4 +38,3 @@ export function AuthStatus() {
     </>
   );
 }
-

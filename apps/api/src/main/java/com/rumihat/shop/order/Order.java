@@ -25,6 +25,8 @@ public class Order {
     private String shippingAddress;
     private int totalPrice;
     private String status = "PENDING";
+    private String paymentMethod = "MANUAL";
+    private String paymentStatus = "PENDING_PAYMENT";
     private Instant createdAt = Instant.now();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -33,13 +35,14 @@ public class Order {
     protected Order() {
     }
 
-    public Order(String orderNumber, String customerName, String customerEmail, String receiverPhone, String shippingAddress, int totalPrice, List<OrderItem> items) {
+    public Order(String orderNumber, String customerName, String customerEmail, String receiverPhone, String shippingAddress, int totalPrice, String paymentMethod, List<OrderItem> items) {
         this.orderNumber = orderNumber;
         this.customerName = customerName;
         this.customerEmail = customerEmail;
         this.receiverPhone = receiverPhone;
         this.shippingAddress = shippingAddress;
         this.totalPrice = totalPrice;
+        this.paymentMethod = paymentMethod == null || paymentMethod.isBlank() ? "MANUAL" : paymentMethod;
         replaceItems(items);
     }
 
@@ -94,6 +97,14 @@ public class Order {
 
     public String getStatus() {
         return status;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod == null || paymentMethod.isBlank() ? "MANUAL" : paymentMethod;
+    }
+
+    public String getPaymentStatus() {
+        return paymentStatus == null || paymentStatus.isBlank() ? "PENDING_PAYMENT" : paymentStatus;
     }
 
     public Instant getCreatedAt() {

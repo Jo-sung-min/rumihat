@@ -4,8 +4,25 @@ const PRODUCT_STORAGE_KEY = "rumihat.products";
 const AUTH_STORAGE_KEY = "rumihat.adminSession";
 const AUTH_TOKEN_STORAGE_KEY = "rumihat.adminToken";
 const AUTH_PROFILE_STORAGE_KEY = "rumihat.adminProfile";
+const CUSTOMER_STORAGE_KEY = "rumihat.customers";
+const AUTH_EVENT = "rumihat.auth.changed";
 const DEFAULT_EMPTY_PRODUCTS: Product[] = [];
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+
+export type SessionRole = "USER" | "ADMIN";
+
+export type SessionProfile = {
+  provider?: string;
+  email?: string;
+  role?: SessionRole;
+  name?: string;
+};
+
+type StoredCustomer = {
+  email: string;
+  password: string;
+  name?: string;
+};
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -33,6 +50,22 @@ function writeJson<T>(key: string, value: T) {
   if (canUseStorage()) {
     window.localStorage.setItem(key, JSON.stringify(value));
   }
+}
+
+function emitAuthChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(AUTH_EVENT));
+  }
+}
+
+export function subscribeAuth(listener: () => void) {
+  window.addEventListener(AUTH_EVENT, listener);
+  window.addEventListener("storage", listener);
+
+  return () => {
+    window.removeEventListener(AUTH_EVENT, listener);
+    window.removeEventListener("storage", listener);
+  };
 }
 
 export function getManagedProducts() {
@@ -161,24 +194,66 @@ export async function deleteProduct(slug: string) {
 }
 
 export function isAdminLoggedIn() {
-  return readJson<boolean>(AUTH_STORAGE_KEY, false) || Boolean(canUseStorage() && window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY));
+  return getSessionProfile()?.role === "ADMIN";
 }
 
 export async function loginAdmin(email: string, password: string) {
-  const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ email: email.trim(), password })
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/admin/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email: email.trim(), password })
+    });
+  } catch {
+    return false;
+  }
 
   if (!response.ok) {
     return false;
   }
 
   const result = (await response.json()) as { token?: string };
-  saveAdminSession(result.token ?? "password-login", "password", email.trim());
+  saveSession(result.token ?? "password-login", { provider: "password", email: email.trim(), role: "ADMIN" });
+  return true;
+}
+
+export function isLoggedIn() {
+  return Boolean(getSessionProfile());
+}
+
+export function joinCustomer(input: { email: string; password: string; name?: string }) {
+  const email = input.email.trim().toLowerCase();
+
+  if (!email || !input.password) {
+    return false;
+  }
+
+  const customers = readJson<StoredCustomer[]>(CUSTOMER_STORAGE_KEY, []);
+  const exists = customers.some((customer) => customer.email === email);
+
+  if (exists) {
+    return false;
+  }
+
+  writeJson(CUSTOMER_STORAGE_KEY, [...customers, { email, password: input.password, name: input.name?.trim() }]);
+  saveSession(`customer-${Date.now()}`, { provider: "email", email, role: "USER", name: input.name?.trim() });
+  return true;
+}
+
+export function loginCustomer(email: string, password: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const customers = readJson<StoredCustomer[]>(CUSTOMER_STORAGE_KEY, []);
+  const customer = customers.find((item) => item.email === normalizedEmail && item.password === password);
+
+  if (!customer) {
+    return false;
+  }
+
+  saveSession(`customer-${Date.now()}`, { provider: "email", email: customer.email, role: "USER", name: customer.name });
   return true;
 }
 
@@ -186,16 +261,26 @@ export function getOAuthLoginUrl(provider: "google" | "kakao") {
   return `${API_BASE_URL}/oauth2/authorization/${provider}`;
 }
 
-export function saveAdminSession(token: string, provider = "password", email = "") {
+export function saveSession(token: string, profile: SessionProfile) {
   writeJson(AUTH_STORAGE_KEY, true);
 
   if (canUseStorage()) {
     window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
-    window.localStorage.setItem(AUTH_PROFILE_STORAGE_KEY, JSON.stringify({ provider, email }));
+    window.localStorage.setItem(AUTH_PROFILE_STORAGE_KEY, JSON.stringify(profile));
   }
+
+  emitAuthChanged();
 }
 
-export function getSessionProfile() {
+export function saveAdminSession(token: string, provider = "password", email = "") {
+  saveSession(token, { provider, email, role: "ADMIN" });
+}
+
+export function saveUserSession(token: string, provider = "email", email = "") {
+  saveSession(token, { provider, email, role: "USER" });
+}
+
+export function getSessionProfile(): SessionProfile | null {
   if (!canUseStorage()) {
     return null;
   }
@@ -203,11 +288,14 @@ export function getSessionProfile() {
   const rawProfile = window.localStorage.getItem(AUTH_PROFILE_STORAGE_KEY);
 
   if (!rawProfile) {
-    return null;
+    return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ? { provider: "password", role: "ADMIN" } : null;
   }
 
   try {
-    return JSON.parse(rawProfile) as { provider?: string; email?: string };
+    const profile = JSON.parse(rawProfile) as SessionProfile;
+    const role = profile.role ?? (profile.provider === "password" ? "ADMIN" : "USER");
+
+    return { ...profile, role };
   } catch {
     return null;
   }
@@ -219,6 +307,8 @@ export function logoutAdmin() {
     window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
     window.localStorage.removeItem(AUTH_PROFILE_STORAGE_KEY);
   }
+
+  emitAuthChanged();
 }
 
 export function createSlug(value: string) {

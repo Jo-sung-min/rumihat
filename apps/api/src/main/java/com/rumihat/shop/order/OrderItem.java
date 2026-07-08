@@ -55,6 +55,14 @@ public class OrderItem {
         return productName;
     }
 
+    public String getProductSlug() {
+        return product == null ? null : product.getSlug();
+    }
+
+    public String getProductImageUrl() {
+        return product == null ? null : product.getImageUrl();
+    }
+
     public String getOptionName() {
         return optionName;
     }

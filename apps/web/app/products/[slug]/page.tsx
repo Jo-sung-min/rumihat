@@ -1,11 +1,12 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Footer } from "../../../components/Footer";
 import { Header } from "../../../components/Header";
 import { ProductVisual } from "../../../components/ProductVisual";
 import { fetchAdminProducts, getDetailProducts } from "../../../lib/admin-store";
-import { addCartItem } from "../../../lib/cart-store";
+import { addCartItem, clearCart } from "../../../lib/cart-store";
 import { formatWon, type Product } from "../../../lib/products";
 
 type ProductPageProps = {
@@ -15,6 +16,7 @@ type ProductPageProps = {
 };
 
 export default function ProductPage({ params }: ProductPageProps) {
+  const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -45,6 +47,17 @@ export default function ProductPage({ params }: ProductPageProps) {
   const detailImages = product.detailImages ?? [];
   const hasManagedDetail = product.detailTitle || product.detailDescription || detailImages.length > 0;
   const options = product.options && product.options.length > 0 ? product.options : [{ colorName: product.color, sizeName: "FREE", stockQuantity: 0, extraPrice: 0 }];
+  const selectedOption = options[selectedOptionIndex];
+
+  function startCheckout(paymentMethod = "manual") {
+    if (!product) {
+      return;
+    }
+
+    clearCart();
+    addCartItem(product, selectedOption, quantity);
+    router.push(`/checkout?payment=${paymentMethod}`);
+  }
 
   return (
     <>
@@ -101,18 +114,22 @@ export default function ProductPage({ params }: ProductPageProps) {
                 +
               </button>
             </div>
-            <button className="buy-now">BUY NOW</button>
+            <button className="buy-now" type="button" onClick={() => startCheckout()}>
+              BUY NOW
+            </button>
             <button
               className="add-cart"
               type="button"
               onClick={() => {
-                addCartItem(product, options[selectedOptionIndex], quantity);
+                addCartItem(product, selectedOption, quantity);
                 setCartMessage("Added to cart.");
               }}
             >
               ADD TO CART
             </button>
-            <button className="kakao-pay">KakaoPay</button>
+            <button className="kakao-pay" type="button" onClick={() => startCheckout("kakao_pay")}>
+              KakaoPay
+            </button>
             {cartMessage ? <p className="cart-message">{cartMessage}</p> : null}
           </aside>
         </section>

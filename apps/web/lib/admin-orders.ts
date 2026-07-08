@@ -14,6 +14,8 @@ export type AdminOrder = {
   customerEmail: string;
   receiverPhone?: string;
   shippingAddress?: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
   totalAmount: number;
   createdAt: string;
   items: AdminOrderItem[];
@@ -51,10 +53,12 @@ function escapeCsv(value: string | number | undefined) {
 }
 
 export function downloadOrdersCsv(orders: AdminOrder[]) {
-  const headers = ["주문번호", "상태", "고객명", "이메일", "연락처", "주소", "금액", "상품", "생성일"];
+  const headers = ["Order number", "Order status", "Payment method", "Payment status", "Customer", "Email", "Phone", "Address", "Amount", "Items", "Created at"];
   const rows = orders.map((order) => [
     order.orderNumber,
     order.status,
+    order.paymentMethod ?? "MANUAL",
+    order.paymentStatus ?? "PENDING_PAYMENT",
     order.customerName,
     order.customerEmail,
     order.receiverPhone ?? "",

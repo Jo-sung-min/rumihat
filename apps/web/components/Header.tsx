@@ -28,7 +28,6 @@ export function Header() {
           </Link>
           <CartStatus />
           <Link href="/mypage">My page</Link>
-          <Link href="/login">Join</Link>
           <AuthStatus />
         </nav>
       </div>

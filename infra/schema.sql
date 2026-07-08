@@ -73,6 +73,8 @@ CREATE TABLE IF NOT EXISTS orders (
   shipping_address TEXT,
   total_price INTEGER NOT NULL,
   status VARCHAR(40) NOT NULL DEFAULT 'PENDING',
+  payment_method VARCHAR(40) NOT NULL DEFAULT 'MANUAL',
+  payment_status VARCHAR(40) NOT NULL DEFAULT 'PENDING_PAYMENT',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

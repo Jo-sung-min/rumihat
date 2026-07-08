@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Footer } from "../../../components/Footer";
 import { Header } from "../../../components/Header";
 import { ProductVisual } from "../../../components/ProductVisual";
-import { addCartItem } from "../../../lib/cart-store";
+import { addCartItem, clearCart } from "../../../lib/cart-store";
 import { featuredProduct, formatWon } from "../../../lib/products";
 
 const people = [
@@ -21,8 +22,16 @@ const people = [
 ];
 
 export default function ProductDetailPage() {
+  const router = useRouter();
   const [quantity, setQuantity] = useState(1);
   const [cartMessage, setCartMessage] = useState("");
+  const option = { colorName: featuredProduct.color, sizeName: "FREE", stockQuantity: 0, extraPrice: 0 };
+
+  function startCheckout(paymentMethod = "manual") {
+    clearCart();
+    addCartItem(featuredProduct, option, quantity);
+    router.push(`/checkout?payment=${paymentMethod}`);
+  }
 
   return (
     <>
@@ -65,18 +74,22 @@ export default function ProductDetailPage() {
                 +
               </button>
             </div>
-            <button className="buy-now">BUY NOW</button>
+            <button className="buy-now" type="button" onClick={() => startCheckout()}>
+              BUY NOW
+            </button>
             <button
               className="add-cart"
               type="button"
               onClick={() => {
-                addCartItem(featuredProduct, { colorName: featuredProduct.color, sizeName: "FREE", stockQuantity: 0, extraPrice: 0 }, quantity);
+                addCartItem(featuredProduct, option, quantity);
                 setCartMessage("Added to cart.");
               }}
             >
               ADD TO CART
             </button>
-            <button className="kakao-pay">KakaoPay</button>
+            <button className="kakao-pay" type="button" onClick={() => startCheckout("kakao_pay")}>
+              KakaoPay
+            </button>
             {cartMessage ? <p className="cart-message">{cartMessage}</p> : null}
           </aside>
         </section>

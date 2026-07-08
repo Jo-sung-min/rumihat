@@ -17,12 +17,15 @@ export default function CheckoutPage() {
   const [buyerEmail, setBuyerEmail] = useState("");
   const [receiverPhone, setReceiverPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("MANUAL");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setItems(getCartItems());
     setBuyerEmail(getSessionProfile()?.email ?? "");
+    const params = new URLSearchParams(window.location.search);
+    setPaymentMethod(params.get("payment") === "kakao_pay" ? "KAKAO_PAY" : "MANUAL");
   }, []);
 
   const subtotal = useMemo(() => getCartTotal(items), [items]);
@@ -34,7 +37,7 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
-      await createLocalOrder({ buyerName, buyerEmail, receiverPhone, shippingAddress: address });
+      await createLocalOrder({ buyerName, buyerEmail, receiverPhone, shippingAddress: address, paymentMethod });
       router.push("/mypage");
     } catch {
       setErrorMessage("주문 저장에 실패했습니다. API 서버와 DB 연결을 확인해주세요.");
@@ -75,6 +78,14 @@ export default function CheckoutPage() {
                 Shipping address
                 <textarea required value={address} onChange={(event) => setAddress(event.target.value)} />
               </label>
+              <label>
+                Payment
+                <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
+                  <option value="MANUAL">Manual payment request</option>
+                  <option value="KAKAO_PAY">KakaoPay request</option>
+                </select>
+              </label>
+              <p className="payment-note">외부 결제 승인은 아직 연결 전입니다. 지금은 관리자 확인용 결제 요청으로 저장됩니다.</p>
               {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
             </section>
             <aside className="cart-summary">

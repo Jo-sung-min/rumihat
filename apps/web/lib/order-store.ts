@@ -6,8 +6,19 @@ export type OrderRecord = {
   buyerEmail: string;
   totalAmount: number;
   status: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
   items: CartItem[];
   createdAt: string;
+};
+
+type ServerOrderItem = {
+  productSlug?: string;
+  productName: string;
+  imageUrl?: string;
+  optionName: string;
+  unitPrice: number;
+  quantity: number;
 };
 
 const ORDER_STORAGE_KEY = "rumihat.orders";
@@ -29,7 +40,13 @@ export function getOrders() {
   }
 }
 
-export async function createLocalOrder(input: { buyerName: string; buyerEmail: string; receiverPhone?: string; shippingAddress?: string }) {
+export async function createLocalOrder(input: {
+  buyerName: string;
+  buyerEmail: string;
+  receiverPhone?: string;
+  shippingAddress?: string;
+  paymentMethod?: string;
+}) {
   const items = getCartItems();
   const totalAmount = getCartTotal(items);
   let orderNumber = `RUM-${Date.now()}`;
@@ -49,6 +66,7 @@ export async function createLocalOrder(input: { buyerName: string; buyerEmail: s
       buyerEmail: input.buyerEmail,
       receiverPhone: input.receiverPhone,
       shippingAddress: input.shippingAddress,
+      paymentMethod: input.paymentMethod ?? "MANUAL",
       items: items.map((item) => ({
         productSlug: item.slug,
         productName: item.name,
@@ -73,6 +91,8 @@ export async function createLocalOrder(input: { buyerName: string; buyerEmail: s
     buyerEmail: input.buyerEmail,
     totalAmount: serverTotalAmount,
     status: "PENDING",
+    paymentMethod: input.paymentMethod ?? "MANUAL",
+    paymentStatus: "PENDING_PAYMENT",
     items,
     createdAt: new Date().toISOString()
   };
@@ -105,15 +125,26 @@ export async function fetchOrdersByEmail(email: string) {
     const serverOrders = (await response.json()) as Array<{
       orderNumber: string;
       status: string;
+      paymentStatus?: string;
       totalAmount: number;
       createdAt: string;
+      items?: ServerOrderItem[];
     }>;
 
     return serverOrders.map((order) => ({
       ...order,
       buyerName: "",
       buyerEmail: email,
-      items: []
+      paymentStatus: order.paymentStatus,
+      items: (order.items ?? []).map((item) => ({
+        id: `${item.productSlug ?? item.productName}:${item.optionName}`,
+        slug: item.productSlug ?? "",
+        name: item.productName,
+        imageUrl: item.imageUrl,
+        optionLabel: item.optionName,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity
+      }))
     }));
   } catch {
     return getOrders();
