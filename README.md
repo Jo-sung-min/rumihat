@@ -25,6 +25,12 @@ npm run dev
 npm run dev
 ```
 
+API도 루트에서 실행할 수 있습니다.
+
+```bash
+npm run dev:api
+```
+
 ## Vercel
 
 루트 디렉터리로 import해도 `vercel.json`이 `apps/web`을 빌드하도록 설정되어 있습니다. Vercel 프로젝트 설정에서 Root Directory를 직접 지정한다면 `apps/web`으로 지정해도 됩니다.
@@ -32,7 +38,7 @@ npm run dev
 ```bash
 docker compose up -d db
 cd apps/api
-./gradlew bootRun
+.\gradlew.bat bootRun
 ```
 
 로컬 DBeaver/PostgreSQL에 직접 만든 DB를 사용할 때 기본 연결값은 아래와 같습니다.
@@ -45,7 +51,7 @@ username: rumihat
 password: rumihat
 ```
 
-다른 계정으로 만들었다면 `.env`의 `DATABASE_USERNAME`, `DATABASE_PASSWORD`를 바꾸면 됩니다. `gradle bootRun`은 루트 `.env`를 자동으로 읽습니다.
+다른 계정으로 만들었다면 `.env`의 `DATABASE_USERNAME`, `DATABASE_PASSWORD`를 바꾸면 됩니다. `npm run dev:api` 또는 `apps/api/gradlew.bat -p apps/api bootRun`은 루트 `.env`를 자동으로 읽습니다.
 
 프론트는 기본으로 `http://localhost:8080` API를 봅니다. 필요하면 [apps/web/.env.local.example](apps/web/.env.local.example)을 복사해서 `apps/web/.env.local`을 만들고 아래 값을 넣습니다.
 

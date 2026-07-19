@@ -6,7 +6,9 @@
   ],
   "scripts": {
     "dev": "npm --prefix apps/web run dev",
+    "dev:api": "apps\\api\\gradlew.bat -p apps\\api bootRun",
     "build": "npm --prefix apps/web run build",
+    "build:api": "apps\\api\\gradlew.bat -p apps\\api build",
     "start": "npm --prefix apps/web run start"
   },
   "dependencies": {

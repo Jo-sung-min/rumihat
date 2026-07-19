@@ -8,9 +8,9 @@ spring:
       - optional:file:../../.env[.properties]
       - optional:file:apps/api/.env[.properties]
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/rumihat}
-    username: ${DATABASE_USERNAME:rumihat}
-    password: ${DATABASE_PASSWORD:ncpebs13!}
+    url: ${RUMIHAT_DATABASE_URL:jdbc:postgresql://localhost:5432/rumihat}
+    username: ${RUMIHAT_DATABASE_USERNAME:rumihat}
+    password: ${RUMIHAT_DATABASE_PASSWORD:rumihat}
   security:
     oauth2:
       client:
